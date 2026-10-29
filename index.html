@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="GTD iOS">
+  <title>GTD Mobile - iPhone</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    body {
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", Helvetica, Arial, sans-serif;
+      padding-top: env(safe-area-inset-top);
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+    .ios-blur {
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+    }
+  </style>
+</head>
+<body class="bg-black text-white min-h-screen flex flex-col justify-between">
+
+  <!-- Top Bar & Dynamic Island -->
+  <header class="sticky top-0 z-40 bg-black/85 ios-blur border-b border-neutral-800 px-4 pt-3 pb-3">
+    <div class="flex items-center justify-between">
+      <div class="flex items-center space-x-2">
+        <span class="text-xs font-bold tracking-wider text-blue-400 uppercase">GTD iOS Pro</span>
+        <span id="sync-status-indicator" class="w-2 h-2 rounded-full bg-emerald-500 inline-block"></span>
+      </div>
+      <div class="flex items-center space-x-2">
+        <button onclick="readFromClipboard()" class="px-2.5 py-1 text-xs bg-neutral-800 hover:bg-neutral-700 active:scale-95 transition rounded-full border border-neutral-700 flex items-center space-x-1">
+          <i class="fa-solid fa-paste text-blue-400"></i>
+          <span>Incolla</span>
+        </button>
+        <button onclick="openSyncModal()" class="px-2.5 py-1 text-xs bg-neutral-800 hover:bg-neutral-700 active:scale-95 transition rounded-full border border-neutral-700 flex items-center space-x-1">
+          <i class="fa-solid fa-cloud-arrow-up text-indigo-400"></i>
+          <span>Sync</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content Area -->
+  <main class="flex-1 p-4 overflow-y-auto pb-24" id="app-container">
+    <!-- Active view injected here -->
+  </main>
+
+  <!-- Floating Add Button -->
+  <div class="fixed bottom-20 right-5 z-30">
+    <button onclick="openQuickAddModal()" class="w-14 h-14 rounded-full bg-blue-600 active:scale-95 transition text-white shadow-lg shadow-blue-500/30 flex items-center justify-center text-xl">
+      <i class="fa-solid fa-plus"></i>
+    </button>
+  </div>
+
+  <!-- Bottom Tab Bar -->
+  <nav class="fixed bottom-0 left-0 right-0 z-40 bg-neutral-900/90 ios-blur border-t border-neutral-800 px-2 py-2 flex justify-around text-xs">
+    <button onclick="switchTab('inbox')" class="tab-btn flex flex-col items-center py-1 text-blue-400" data-tab="inbox">
+      <i class="fa-solid fa-tray text-base mb-1"></i>
+      <span>Inbox</span>
+    </button>
+    <button onclick="switchTab('actions')" class="tab-btn flex flex-col items-center py-1 text-neutral-400" data-tab="actions">
+      <i class="fa-solid fa-bolt text-base mb-1"></i>
+      <span>Azioni</span>
+    </button>
+    <button onclick="switchTab('projects')" class="tab-btn flex flex-col items-center py-1 text-neutral-400" data-tab="projects">
+      <i class="fa-solid fa-diagram-project text-base mb-1"></i>
+      <span>Progetti</span>
+    </button>
+    <button onclick="switchTab('waiting')" class="tab-btn flex flex-col items-center py-1 text-neutral-400" data-tab="waiting">
+      <i class="fa-solid fa-clock text-base mb-1"></i>
+      <span>In Attesa</span>
+    </button>
+    <button onclick="switchTab('someday')" class="tab-btn flex flex-col items-center py-1 text-neutral-400" data-tab="someday">
+      <i class="fa-solid fa-box-archive text-base mb-1"></i>
+      <span>Altro</span>
+    </button>
+  </nav>
+
+  <!-- Quick Add Modal -->
+  <div id="add-modal" class="fixed inset-0 z-50 bg-black/80 ios-blur hidden flex items-end justify-center">
+    <div class="bg-neutral-900 border-t border-neutral-800 rounded-t-3xl w-full p-5 space-y-4 max-h-[85vh] overflow-y-auto">
+      <div class="flex justify-between items-center">
+        <h3 class="font-semibold text-base">Cattura Rapida Inbox</h3>
+        <button onclick="closeQuickAddModal()" class="text-neutral-400 text-2xl leading-none">&times;</button>
+      </div>
+      <input type="text" id="quick-title" placeholder="Cosa devi fare o ricordare?" class="w-full bg-neutral-950 border border-neutral-800 rounded-xl p-3 text-sm text-white focus:outline-none focus:border-blue-500">
+      <textarea id="quick-details" rows="3" placeholder="Note aggiuntive, dettagli, URL..." class="w-full bg-neutral-950 border border-neutral-800 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-blue-500"></textarea>
+      <button onclick="saveQuickItem()" class="w-full py-3 rounded-xl bg-blue-600 font-semibold text-sm active:bg-blue-700">Salva in Inbox</button>
+    </div>
+  </div>
+
+  <!-- Universal Edit Modal -->
+  <div id="edit-modal" class="fixed inset-0 z-50 bg-black/80 ios-blur hidden flex items-end justify-center">
+    <div class="bg-neutral-900 border-t border-neutral-800 rounded-t-3xl w-full p-5 space-y-4 max-h-[90vh] overflow-y-auto">
+      <div class="flex justify-between items-center border-b border-neutral-800 pb-3">
+        <h3 class="font-semibold text-sm text-neutral-200">Modifica Elemento</h3>
+        <button onclick="closeEditModal()" class="text-neutral-400 text-2xl leading-none">&times;</button>
+      </div>
+      <input type="hidden" id="edit-orig-cat">
+      <input type="hidden" id="edit-orig-idx">
+      
+      <div>
+        <label class="text-[11px] text-neutral-400 block mb-1">Titolo / Azione</label>
+        <input type="text" id="edit-title" class="w-full bg-neutral-950 border border-neutral-800 rounded-xl p-3 text-sm text-white focus:outline-none focus:border-blue-500">
+      </div>
+
+      <div>
+        <label class="text-[11px] text-neutral-400 block mb-1">Note o Dettagli</label>
+        <textarea id="edit-details" rows="3" class="w-full bg-neutral-950 border border-neutral-800 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-blue-500"></textarea>
+      </div>
+
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="text-[11px] text-neutral-400 block mb-1">Categoria GTD</label>
+          <select id="edit-category" class="w-full bg-neutral-950 border border-neutral-800 rounded-xl p-2.5 text-xs text-white">
+            <option value="inbox">Inbox</option>
+            <option value="actions">Prossime Azioni</option>
+            <option value="projects">Progetti</option>
+            <option value="waiting">In Attesa</option>
+            <option value="someday">Un Giorno / Forse</option>
+          </select>
+        </div>
+        <div>
+          <label class="text-[11px] text-neutral-400 block mb-1">Contesto</label>
+          <select id="edit-context" class="w-full bg-neutral-950 border border-neutral-800 rounded-xl p-2.5 text-xs text-white">
+            <option value="">Nessuno</option>
+            <option value="@Computer">@Computer</option>
+            <option value="@Telefono">@Telefono</option>
+            <option value="@InGiro">@InGiro</option>
+            <option value="@Casa">@Casa</option>
+            <option value="@Ufficio">@Ufficio</option>
+            <option value="@Email">@Email</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="text-[11px] text-neutral-400 block mb-1">Progetto Associato</label>
+          <input type="text" id="edit-project" placeholder="es. Ristrutturazione" class="w-full bg-neutral-950 border border-neutral-800 rounded-xl p-2.5 text-xs text-white">
+        </div>
+        <div>
+          <label class="text-[11px] text-neutral-400 block mb-1">Delegato a (se in attesa)</label>
+          <input type="text" id="edit-delegate" placeholder="es. Marco" class="w-full bg-neutral-950 border border-neutral-800 rounded-xl p-2.5 text-xs text-white">
+        </div>
+      </div>
+
+      <div class="flex space-x-2 pt-2">
+        <button onclick="saveEditedItem()" class="flex-1 py-3 rounded-xl bg-blue-600 font-semibold text-sm active:bg-blue-700">Salva Modifiche</button>
+        <button onclick="startClarifyFromEdit()" class="px-4 py-3 rounded-xl bg-amber-600 font-semibold text-sm active:bg-amber-700 flex items-center space-x-1">
+          <i class="fa-solid fa-wand-magic-sparkles"></i>
+          <span>Chiarisci</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- GTD Clarify Decision-Tree Wizard Modal -->
+  <div id="clarify-modal" class="fixed inset-0 z-50 bg-black/85 ios-blur hidden flex items-center justify-center p-4">
+    <div class="bg-neutral-900 border border-neutral-800 rounded-3xl w-full max-w-sm p-5 space-y-4 max-h-[90vh] overflow-y-auto">
+      <div class="flex justify-between items-center border-b border-neutral-800 pb-2">
+        <div class="flex items-center space-x-2">
+          <span class="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse"></span>
+          <h3 class="font-bold text-sm text-neutral-200">Workflow GTD Chiarisci</h3>
+        </div>
+        <button onclick="closeClarifyModal()" class="text-neutral-400 text-xl leading-none">&times;</button>
+      </div>
+
+      <div class="bg-neutral-950 border border-neutral-800 rounded-2xl p-3">
+        <span class="text-[10px] text-neutral-500 uppercase tracking-wider block">Elemento da chiarire:</span>
+        <h4 id="wizard-item-title" class="font-semibold text-sm text-neutral-200 mt-0.5"></h4>
+        <p id="wizard-item-details" class="text-xs text-neutral-400 mt-1 whitespace-pre-wrap"></p>
+      </div>
+
+      <!-- Step 1: Is it Actionable? -->
+      <div id="step-actionable" class="space-y-3">
+        <p class="text-xs font-semibold text-neutral-300">1. Richiede un'azione concreta?</p>
+        <div class="grid grid-cols-2 gap-2">
+          <button onclick="wizardGoActionable(true)" class="py-3 px-2 rounded-xl bg-blue-600 font-semibold text-xs active:bg-blue-700 flex items-center justify-center space-x-1">
+            <i class="fa-solid fa-check"></i>
+            <span>SÌ (Azione)</span>
+          </button>
+          <button onclick="wizardGoActionable(false)" class="py-3 px-2 rounded-xl bg-neutral-800 border border-neutral-700 font-semibold text-xs active:bg-neutral-700 flex items-center justify-center space-x-1">
+            <i class="fa-solid fa-xmark"></i>
+            <span>NO (Archivio/Cestino)</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Step 1-B: Non-Actionable Options -->
+      <div id="step-non-actionable" class="hidden space-y-3">
+        <p class="text-xs font-semibold text-neutral-300">Non richiede azione. Cosa fare?</p>
+        <div class="space-y-2">
+          <button onclick="wizardFinishNonAction('someday')" class="w-full py-2.5 px-3 rounded-xl bg-neutral-800 border border-neutral-700 text-xs text-left flex items-center justify-between">
+            <span><i class="fa-solid fa-box-archive mr-2 text-amber-400"></i>Un Giorno / Forse</span>
+            <i class="fa-solid fa-chevron-right text-[10px] text-neutral-500"></i>
+          </button>
+          <button onclick="wizardFinishNonAction('trash')" class="w-full py-2.5 px-3 rounded-xl bg-red-950/40 border border-red-900/50 text-xs text-left text-red-300 flex items-center justify-between">
+            <span><i class="fa-solid fa-trash mr-2"></i>Elimina nel Cestino</span>
+            <i class="fa-solid fa-chevron-right text-[10px] text-neutral-500"></i>
+          </button>
+          <button onclick="wizardBackToStep1()" class="w-full py-2 text-center text-xs text-neutral-500 hover:text-neutral-300">Indietro</button>
+        </div>
+      </div>
+
+      <!-- Step 2: Define Action & Check Project -->
+      <div id="step-define-action" class="hidden space-y-3">
+        <p class="text-xs font-semibold text-neutral-300">2. Definisci la prossima azione fisica:</p>
+        <input type="text" id="wizard-next-action-input" placeholder="Verbo all'infinito (es. Chiamare Mario per preventivo)" class="w-full bg-neutral-950 border border-neutral-800 rounded-xl p-2.5 text-xs text-white">
+
+        <div class="pt-2">
+          <label class="text-[11px] text-neutral-400 block mb-1">Fa parte di un Progetto (&gt;1 azione)?</label>
+          <input type="text" id="wizard-project-input" placeholder="Nome progetto (opzionale)" class="w-full bg-neutral-950 border border-neutral-800 rounded-xl p-2.5 text-xs text-white">
+        </div>
+
+        <button onclick="wizardGoTwoMinRule()" class="w-full py-2.5 rounded-xl bg-blue-600 font-semibold text-xs active:bg-blue-700">Prosegui (Regola dei 2 Minuti) &rarr;</button>
+      </div>
+
+      <!-- Step 3: Two-Minute Rule -->
+      <div id="step-two-min" class="hidden space-y-3">
+        <p class="text-xs font-semibold text-neutral-300">3. Richiede meno di 2 minuti per essere fatta?</p>
+        
+        <!-- Live Countdown Timer -->
+        <div class="bg-neutral-950 border border-neutral-800 rounded-2xl p-3 text-center space-y-2">
+          <div id="timer-display" class="text-2xl font-mono font-bold text-blue-400">02:00</div>
+          <div class="flex justify-center space-x-2">
+            <button onclick="startTimer()" id="btn-timer-start" class="px-3 py-1 bg-neutral-800 rounded-full text-[11px] font-medium border border-neutral-700">Avvia Timer</button>
+            <button onclick="resetTimer()" class="px-3 py-1 bg-neutral-800 rounded-full text-[11px] font-medium border border-neutral-700 text-neutral-400">Reset</button>
+          </div>
+        </div>
+
+        <button onclick="wizardFinishTwoMinDone()" class="w-full py-2.5 rounded-xl bg-emerald-600 font-semibold text-xs active:bg-emerald-700 flex items-center justify-center space-x-1">
+          <i class="fa-solid fa-check-double"></i>
+          <span>Fatta Subito! (Completa ora)</span>
+        </button>
+
+        <button onclick="wizardGoDelegateOrDefer()" class="w-full py-2.5 rounded-xl bg-neutral-800 border border-neutral-700 font-semibold text-xs active:bg-neutral-700">
+          Richiede &gt;2 Minuti (Delega o Organizza) &rarr;
+        </button>
+      </div>
+
+      <!-- Step 4: Delegate or Organize by Context -->
+      <div id="step-delegate-defer" class="hidden space-y-3">
+        <p class="text-xs font-semibold text-neutral-300">4. Delega a terzi oppure organizza per Contesto:</p>
+        
+        <div class="space-y-3">
+          <div class="bg-neutral-950 border border-neutral-800 rounded-xl p-3 space-y-2">
+            <span class="text-[11px] font-semibold text-neutral-300 block">Opzione A: Delega (In Attesa)</span>
+            <input type="text" id="wizard-delegate-input" placeholder="A chi è delegato? (es. Laura)" class="w-full bg-neutral-900 border border-neutral-700 rounded-lg p-2 text-xs text-white">
+            <button onclick="wizardFinishDelegated()" class="w-full py-2 rounded-lg bg-indigo-600 font-semibold text-xs active:bg-indigo-700">Salva in "In Attesa"</button>
+          </div>
+
+          <div class="bg-neutral-950 border border-neutral-800 rounded-xl p-3 space-y-2">
+            <span class="text-[11px] font-semibold text-neutral-300 block">Opzione B: Prossima Azione personale</span>
+            <select id="wizard-context-select" class="w-full bg-neutral-900 border border-neutral-700 rounded-lg p-2 text-xs text-white">
+              <option value="@Computer">@Computer</option>
+              <option value="@Telefono">@Telefono</option>
+              <option value="@InGiro">@InGiro</option>
+              <option value="@Casa">@Casa</option>
+              <option value="@Ufficio">@Ufficio</option>
+              <option value="@Email">@Email</option>
+            </select>
+            <button onclick="wizardFinishAction()" class="w-full py-2 rounded-lg bg-blue-600 font-semibold text-xs active:bg-blue-700">Salva in "Prossime Azioni"</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sync Modal -->
+  <div id="sync-modal" class="fixed inset-0 z-50 bg-black/80 ios-blur hidden flex items-center justify-center p-4">
+    <div class="bg-neutral-900 border border-neutral-800 rounded-3xl w-full max-w-sm p-5 space-y-4">
+      <div class="flex justify-between items-center border-b border-neutral-800 pb-2">
+        <h3 class="font-semibold text-sm">JSONBin Cloud Sync</h3>
+        <button onclick="closeSyncModal()" class="text-neutral-400 text-xl leading-none">&times;</button>
+      </div>
+      <div class="space-y-3 text-xs">
+        <div>
+          <label class="text-neutral-400 block mb-1">Master Key</label>
+          <input type="password" id="sync-key" placeholder="$2a$10$..." class="w-full bg-neutral-950 border border-neutral-800 rounded-xl p-2.5 text-white">
+        </div>
+        <div>
+          <label class="text-neutral-400 block mb-1">Bin ID</label>
+          <input type="text" id="sync-bin" placeholder="65cb48..." class="w-full bg-neutral-950 border border-neutral-800 rounded-xl p-2.5 text-white">
+        </div>
+        <div class="flex space-x-2 pt-2">
+          <button onclick="uploadToCloud()" class="flex-1 py-2.5 rounded-xl bg-blue-600 font-semibold text-xs active:bg-blue-700">Invia al Cloud ⬆</button>
+          <button onclick="downloadFromCloud()" class="flex-1 py-2.5 rounded-xl bg-neutral-800 border border-neutral-700 font-semibold text-xs active:bg-neutral-700">Scarica ⬇</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let gtdData = JSON.parse(localStorage.getItem('gtd_data_v3')) || {
+      inbox: [],
+      actions: [],
+      projects: [],
+      waiting: [],
+      someday: []
+    };
+
+    let currentTab = 'inbox';
+    let clarifyActiveIndex = null;
+    let timerInterval = null;
+    let timerSeconds = 120;
+
+    function saveData() {
+      localStorage.setItem('gtd_data_v3', JSON.stringify(gtdData));
+      renderCurrentTab();
+    }
+
+    function switchTab(tab) {
+      currentTab = tab;
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        const isCurrent = btn.dataset.tab === tab;
+        btn.classList.toggle('text-blue-400', isCurrent);
+        btn.classList.toggle('text-neutral-400', !isCurrent);
+      });
+      renderCurrentTab();
+    }
+
+    function renderCurrentTab() {
+      const container = document.getElementById('app-container');
+      const list = gtdData[currentTab] || [];
+      
+      const titleMap = {
+        inbox: 'Inbox (Da Chiarire)',
+        actions: 'Prossime Azioni',
+        projects: 'Progetti Attivi',
+        waiting: 'In Attesa di Terzi',
+        someday: 'Un Giorno / Forse'
+      };
+
+      let html = `<div class="space-y-3">
+        <div class="flex justify-between items-center mb-2">
+          <h2 class="text-base font-bold">${titleMap[currentTab]}</h2>
+          <span class="text-xs bg-neutral-800 px-2 py-0.5 rounded-full text-neutral-400">${list.length}</span>
+        </div>`;
+
+      if (list.length === 0) {
+        html += `<div class="text-center py-20 text-neutral-600 text-xs space-y-2">
+          <i class="fa-regular fa-folder-open text-3xl mb-1"></i>
+          <p>Nessun elemento presente in questa sezione.</p>
+        </div>`;
+      } else {
+        list.forEach((item, idx) => {
+          html += `<div class="bg-neutral-900 border border-neutral-800 rounded-2xl p-3.5 space-y-2 shadow-sm">
+            <div class="flex justify-between items-start">
+              <h4 class="font-medium text-sm text-neutral-200 leading-snug">${escapeHtml(item.title)}</h4>
+              <div class="flex items-center space-x-1 ml-2">
+                <button onclick="openEditModal('${currentTab}', ${idx})" class="p-1.5 text-neutral-400 hover:text-blue-400 active:scale-95">
+                  <i class="fa-solid fa-pen text-xs"></i>
+                </button>
+                <button onclick="deleteItem('${currentTab}', ${idx})" class="p-1.5 text-neutral-400 hover:text-red-400 active:scale-95">
+                  <i class="fa-regular fa-trash-can text-xs"></i>
+                </button>
+              </div>
+            </div>
+            ${item.details ? `<p class="text-xs text-neutral-400 whitespace-pre-wrap">${escapeHtml(item.details)}</p>` : ''}
+            
+            <div class="flex flex-wrap items-center gap-1.5 pt-1 text-[11px] text-neutral-500">
+              <span>${item.date || 'Oggi'}</span>
+              ${item.context ? `<span class="px-2 py-0.5 rounded-full bg-blue-950/60 text-blue-400 border border-blue-900/50">${item.context}</span>` : ''}
+              ${item.project ? `<span class="px-2 py-0.5 rounded-full bg-purple-950/60 text-purple-400 border border-purple-900/50"><i class="fa-solid fa-diagram-project mr-1 text-[9px]"></i>${escapeHtml(item.project)}</span>` : ''}
+              ${item.delegated ? `<span class="px-2 py-0.5 rounded-full bg-amber-950/60 text-amber-400 border border-amber-900/50"><i class="fa-solid fa-user mr-1 text-[9px]"></i>${escapeHtml(item.delegated)}</span>` : ''}
+            </div>
+
+            <div class="flex items-center justify-end pt-2 border-t border-neutral-800/80">
+              ${currentTab === 'inbox' ? `
+                <button onclick="startClarifyWizard(${idx})" class="px-3 py-1 bg-amber-500/20 text-amber-400 rounded-lg text-xs font-semibold flex items-center space-x-1 active:scale-95">
+                  <i class="fa-solid fa-wand-magic-sparkles text-[11px]"></i>
+                  <span>Chiarisci GTD</span>
+                </button>
+              ` : `
+                <button onclick="openEditModal('${currentTab}', ${idx})" class="text-xs text-neutral-500 hover:text-neutral-300">Modifica dettagli</button>
+              `}
+            </div>
+          </div>`;
+        });
+      }
+
+      html += `</div>`;
+      container.innerHTML = html;
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    // Quick Add
+    function openQuickAddModal() {
+      document.getElementById('add-modal').classList.remove('hidden');
+      document.getElementById('quick-title').focus();
+    }
+    function closeQuickAddModal() {
+      document.getElementById('add-modal').classList.add('hidden');
+    }
+    function saveQuickItem() {
+      const t = document.getElementById('quick-title').value.trim();
+      const d = document.getElementById('quick-details').value.trim();
+      if (!t) return;
+      gtdData.inbox.push({
+        title: t,
+        details: d,
+        date: new Date().toLocaleDateString()
+      });
+      document.getElementById('quick-title').value = '';
+      document.getElementById('quick-details').value = '';
+      closeQuickAddModal();
+      saveData();
+    }
+
+    // Universal Edit Modal
+    function openEditModal(category, index) {
+      const item = gtdData[category][index];
+      if (!item) return;
+
+      document.getElementById('edit-orig-cat').value = category;
+      document.getElementById('edit-orig-idx').value = index;
+      document.getElementById('edit-title').value = item.title || '';
+      document.getElementById('edit-details').value = item.details || '';
+      document.getElementById('edit-category').value = category;
+      document.getElementById('edit-context').value = item.context || '';
+      document.getElementById('edit-project').value = item.project || '';
+      document.getElementById('edit-delegate').value = item.delegated || '';
+
+      document.getElementById('edit-modal').classList.remove('hidden');
+    }
+    function closeEditModal() {
+      document.getElementById('edit-modal').classList.add('hidden');
+    }
+    function saveEditedItem() {
+      const origCat = document.getElementById('edit-orig-cat').value;
+      const origIdx = parseInt(document.getElementById('edit-orig-idx').value, 10);
+      const newCat = document.getElementById('edit-category').value;
+      const title = document.getElementById('edit-title').value.trim();
+
+      if (!title) return alert('Il titolo non può essere vuoto.');
+
+      const updated = {
+        title: title,
+        details: document.getElementById('edit-details').value.trim(),
+        context: document.getElementById('edit-context').value || undefined,
+        project: document.getElementById('edit-project').value.trim() || undefined,
+        delegated: document.getElementById('edit-delegate').value.trim() || undefined,
+        date: gtdData[origCat][origIdx]?.date || new Date().toLocaleDateString()
+      };
+
+      gtdData[origCat].splice(origIdx, 1);
+      gtdData[newCat].push(updated);
+
+      closeEditModal();
+      saveData();
+    }
+    function startClarifyFromEdit() {
+      const origCat = document.getElementById('edit-orig-cat').value;
+      const origIdx = parseInt(document.getElementById('edit-orig-idx').value, 10);
+      closeEditModal();
+      if (origCat === 'inbox') {
+        startClarifyWizard(origIdx);
+      } else {
+        const item = gtdData[origCat].splice(origIdx, 1)[0];
+        gtdData.inbox.push(item);
+        saveData();
+        startClarifyWizard(gtdData.inbox.length - 1);
+      }
+    }
+
+    // Clarify Wizard Logic
+    function startClarifyWizard(idx) {
+      clarifyActiveIndex = idx;
+      const item = gtdData.inbox[idx];
+      if (!item) return;
+
+      document.getElementById('wizard-item-title').textContent = item.title;
+      document.getElementById('wizard-item-details').textContent = item.details || '';
+      document.getElementById('wizard-next-action-input').value = item.title;
+      document.getElementById('wizard-project-input').value = '';
+      document.getElementById('wizard-delegate-input').value = '';
+
+      // Reset steps
+      document.getElementById('step-actionable').classList.remove('hidden');
+      document.getElementById('step-non-actionable').classList.add('hidden');
+      document.getElementById('step-define-action').classList.add('hidden');
+      document.getElementById('step-two-min').classList.add('hidden');
+      document.getElementById('step-delegate-defer').classList.add('hidden');
+      resetTimer();
+
+      document.getElementById('clarify-modal').classList.remove('hidden');
+    }
+    function closeClarifyModal() {
+      resetTimer();
+      document.getElementById('clarify-modal').classList.add('hidden');
+    }
+
+    function wizardGoActionable(isActionable) {
+      document.getElementById('step-actionable').classList.add('hidden');
+      if (isActionable) {
+        document.getElementById('step-define-action').classList.remove('hidden');
+      } else {
+        document.getElementById('step-non-actionable').classList.remove('hidden');
+      }
+    }
+    function wizardBackToStep1() {
+      document.getElementById('step-non-actionable').classList.add('hidden');
+      document.getElementById('step-actionable').classList.remove('hidden');
+    }
+    function wizardFinishNonAction(type) {
+      const item = gtdData.inbox.splice(clarifyActiveIndex, 1)[0];
+      if (type === 'someday') {
+        gtdData.someday.push(item);
+      }
+      closeClarifyModal();
+      saveData();
+    }
+    function wizardGoTwoMinRule() {
+      const act = document.getElementById('wizard-next-action-input').value.trim();
+      if (!act) return alert("Specifica un'azione fisica concreta.");
+      document.getElementById('step-define-action').classList.add('hidden');
+      document.getElementById('step-two-min').classList.remove('hidden');
+    }
+    function wizardFinishTwoMinDone() {
+      gtdData.inbox.splice(clarifyActiveIndex, 1);
+      alert('Azione completata subito in meno di 2 minuti! Segnata come conclusa.');
+      closeClarifyModal();
+      saveData();
+    }
+    function wizardGoDelegateOrDefer() {
+      document.getElementById('step-two-min').classList.add('hidden');
+      document.getElementById('step-delegate-defer').classList.remove('hidden');
+    }
+    function wizardFinishDelegated() {
+      const person = document.getElementById('wizard-delegate-input').value.trim();
+      if (!person) return alert('Specifica a chi è delegata questa voce.');
+      const item = gtdData.inbox.splice(clarifyActiveIndex, 1)[0];
+      gtdData.waiting.push({
+        title: document.getElementById('wizard-next-action-input').value.trim() || item.title,
+        details: item.details,
+        delegated: person,
+        project: document.getElementById('wizard-project-input').value.trim() || undefined,
+        date: new Date().toLocaleDateString()
+      });
+      closeClarifyModal();
+      saveData();
+    }
+    function wizardFinishAction() {
+      const item = gtdData.inbox.splice(clarifyActiveIndex, 1)[0];
+      const proj = document.getElementById('wizard-project-input').value.trim();
+      const actionItem = {
+        title: document.getElementById('wizard-next-action-input').value.trim() || item.title,
+        details: item.details,
+        context: document.getElementById('wizard-context-select').value,
+        project: proj || undefined,
+        date: new Date().toLocaleDateString()
+      };
+      gtdData.actions.push(actionItem);
+
+      if (proj && !gtdData.projects.some(p => p.title.toLowerCase() === proj.toLowerCase())) {
+        gtdData.projects.push({
+          title: proj,
+          details: 'Creato dal flusso GTD',
+          date: new Date().toLocaleDateString()
+        });
+      }
+      closeClarifyModal();
+      saveData();
+    }
+
+    // 2-Minute Timer
+    function startTimer() {
+      if (timerInterval) return;
+      document.getElementById('btn-timer-start').textContent = 'In corso...';
+      timerInterval = setInterval(() => {
+        timerSeconds--;
+        const mins = String(Math.floor(timerSeconds / 60)).padStart(2, '0');
+        const secs = String(timerSeconds % 60).padStart(2, '0');
+        document.getElementById('timer-display').textContent = `${mins}:${secs}`;
+        if (timerSeconds <= 0) {
+          clearInterval(timerInterval);
+          timerInterval = null;
+          alert('Tempo scaduto (2 minuti)!');
+        }
+      }, 1000);
+    }
+    function resetTimer() {
+      if (timerInterval) clearInterval(timerInterval);
+      timerInterval = null;
+      timerSeconds = 120;
+      const display = document.getElementById('timer-display');
+      if (display) display.textContent = '02:00';
+      const btn = document.getElementById('btn-timer-start');
+      if (btn) btn.textContent = 'Avvia Timer';
+    }
+
+    function deleteItem(listName, idx) {
+      if (confirm('Eliminare questo elemento?')) {
+        gtdData[listName].splice(idx, 1);
+        saveData();
+      }
+    }
+
+    // Ingestion from Clipboard
+    async function readFromClipboard() {
+      try {
+        const text = await navigator.clipboard.readText();
+        if (text) {
+          gtdData.inbox.push({
+            title: text.slice(0, 40) + (text.length > 40 ? '...' : ''),
+            details: text,
+            date: new Date().toLocaleDateString()
+          });
+          saveData();
+          alert('Nota copiata nell Inbox con successo!');
+        } else {
+          alert('Nessun testo presente negli appunti.');
+        }
+      } catch (e) {
+        alert('Permesso per gli appunti non concesso o non supportato.');
+      }
+    }
+
+    // Sync Modal & JSONBin Functions
+    function openSyncModal() {
+      document.getElementById('sync-key').value = localStorage.getItem('jsonbin_key') || '';
+      document.getElementById('sync-bin').value = localStorage.getItem('jsonbin_bin') || '';
+      document.getElementById('sync-modal').classList.remove('hidden');
+    }
+    function closeSyncModal() {
+      document.getElementById('sync-modal').classList.add('hidden');
+    }
+
+    async function uploadToCloud() {
+      const key = document.getElementById('sync-key').value.trim();
+      const bin = document.getElementById('sync-bin').value.trim();
+      if (!key || !bin) return alert('Inserisci Master Key e Bin ID');
+
+      localStorage.setItem('jsonbin_key', key);
+      localStorage.setItem('jsonbin_bin', bin);
+
+      try {
+        const res = await fetch(`https://api.jsonbin.io/v3/b/${bin}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Master-Key': key
+          },
+          body: JSON.stringify(gtdData)
+        });
+        if (res.ok) {
+          alert('Sincronizzazione completata: dati inviati al Cloud!');
+          closeSyncModal();
+        } else {
+          alert('Errore sincronizzazione: verifica che Master Key e Bin ID siano corretti.');
+        }
+      } catch (err) {
+        alert('Errore di connessione: ' + err.message);
+      }
+    }
+
+    async function downloadFromCloud() {
+      const key = document.getElementById('sync-key').value.trim();
+      const bin = document.getElementById('sync-bin').value.trim();
+      if (!key || !bin) return alert('Inserisci Master Key e Bin ID');
+
+      try {
+        const res = await fetch(`https://api.jsonbin.io/v3/b/${bin}/latest`, {
+          headers: { 'X-Master-Key': key }
+        });
+        if (res.ok) {
+          const json = await res.json();
+          if (json.record) {
+            gtdData = json.record;
+            saveData();
+            alert('Dati scaricati dal Cloud con successo!');
+            closeSyncModal();
+          }
+        } else {
+          alert('Errore nel recupero dati: controlla credenziali e permessi.');
+        }
+      } catch (err) {
+        alert('Errore di connessione: ' + err.message);
+      }
+    }
+
+    // URL Ingestion handler
+    window.addEventListener('DOMContentLoaded', () => {
+      const params = new URLSearchParams(window.location.search);
+      const text = params.get('text') || params.get('title');
+      const url = params.get('url');
+      if (text || url) {
+        gtdData.inbox.push({
+          title: (text || 'Link condiviso').slice(0, 45),
+          details: [text, url].filter(Boolean).join('\n'),
+          date: new Date().toLocaleDateString()
+        });
+        saveData();
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+      renderCurrentTab();
+    });
+  </script>
+</body>
+</html>
